@@ -1,0 +1,88 @@
+name: WindowsBuild
+
+on: [push, pull_request]
+
+jobs:
+  Build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Download deps
+      id: downloadDeps
+      working-directory: ${{github.workspace}}
+      shell: pwsh
+      run: |
+          Invoke-WebRequest -Uri https://download.qt.io/official_releases/qt/6.2/6.2.4/single/qt-everywhere-src-6.2.4.zip -OutFile qt-everywhere-src-6.2.4.zip
+          &7z x qt-everywhere-src-6.2.4.zip
+          Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-15.0.2.zip -OutFile llvm-project-llvmorg-15.0.2.zip
+          &7z x llvm-project-llvmorg-15.0.2.zip
+          cd llvm-project-llvmorg-15.0.2
+          sed -i "s/liblldb SHARED/liblldb STATIC/g" lldb/source/API/CMakeLists.txt
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.10.7'
+        architecture: 'x64' 
+
+    - name: Configure build for amd64
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: amd64
+        spectre: false
+        vsversion: 2022
+
+    - name: Configure qt
+      working-directory: ${{github.workspace}}
+      shell: cmd
+      run: |
+          cd qt-everywhere-src-6.2.4
+          .\configure -prefix ${{github.workspace}}/qt -opensource -confirm-license -release -static -platform win32-msvc -static-runtime -no-pch -gui -nomake examples -nomake tests -skip qtconnectivity -skip qtdeclarative -skip qtlocation -skip qtmultimedia -skip qtquick1 -skip qtquickcontrols -skip qtsensors -skip qtdoc -skip qtlottie -skip qtmqtt -skip qtopcua -skip qtquicktimeline -skip qtquick3d -skip qtscxml -skip qtvirtualkeyboard -skip qtwebengine -skip qtwebview -skip qt3d -skip qtserialbus --webp=qt --tiff=qt
+
+    - name: Build qt
+      working-directory: ${{github.workspace}}
+      shell: cmd
+      run: |
+          cd qt-everywhere-src-6.2.4
+          cmake --build . --parallel
+          ninja install
+          cd ${{github.workspace}}
+          echo "do delete"
+          rmdir /S /Q qt-everywhere-src-6.2.4
+
+    # - name: Build lldb
+    #   working-directory: ${{github.workspace}}
+    #   shell: cmd
+    #   run: |
+    #       mkdir lldb-build
+    #       cd lldb-build
+    #       set CXXFLAGS="/DLLDB_API="
+    #       cmake -G Ninja -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/lldb -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang;lldb" -DLLDB_INCLUDE_TESTS=OFF -DLLDB_TOOL_LLDB_VSCODE_BUILD=OFF -DCLANG_INCLUDE_DOCS=OFF -DCLANG_INCLUDE_TESTS=OFF -DBENCHMARK_INSTALL_DOCS=OFF -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_INCLUDE_DOCS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_RUNTIMES=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLDB_ENABLE_LUA=OFF -DLLDB_ENABLE_PYTHON=OFF ../llvm-project-llvmorg-15.0.2/llvm
+    #       cmake --build . --parallel
+    #       ninja install
+    #       copy ${{github.workspace}}\lldb-build\lib\*.lib ${{github.workspace}}\lldb\lib\ /y
+    #       cd ${{github.workspace}}
+    #       rmdir /S /Q lldb-build
+
+    - name: Pack files
+      working-directory: ${{github.workspace}}
+      shell: cmd
+      run: |
+          &7z a lldb lldb.7z
+          &7z a qt qt.7z
+
+    - uses: actions/upload-artifact@v2
+      with:
+        path: |
+            *.7z
+
+    - uses: xresloader/upload-to-github-release@v1
+      if: contains(github.ref, 'tags/')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        file: "*.7z"
+        overwrite: true
+        tags: true
+        draft: false
