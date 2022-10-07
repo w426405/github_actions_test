@@ -68,8 +68,8 @@ jobs:
     - name: Pack files
       working-directory: ${{github.workspace}}
       run: |
-          &7z a lldb lldb.7z
-          &7z a qt qt.7z
+          &7z a lldb.7z lldb
+          &7z a qt.7z qt
 
     - uses: actions/upload-artifact@v2
       with:
