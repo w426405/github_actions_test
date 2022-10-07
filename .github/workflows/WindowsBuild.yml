@@ -67,7 +67,6 @@ jobs:
 
     - name: Pack files
       working-directory: ${{github.workspace}}
-      shell: cmd
       run: |
           &7z a lldb lldb.7z
           &7z a qt qt.7z
