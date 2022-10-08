@@ -111,8 +111,7 @@ jobs:
 
     - uses: actions/upload-artifact@v2
       with:
-        path: |
-            *.7z
+        path: ${{github.workspace}}\out\*.7z
 
     - uses: xresloader/upload-to-github-release@v1
       if: contains(github.ref, 'tags/')
