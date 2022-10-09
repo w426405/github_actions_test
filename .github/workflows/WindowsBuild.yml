@@ -83,6 +83,8 @@ jobs:
         cd build
         mkdir XingDBG
         cd XingDBG
+        set INCLUDE=%VSINSTALLDIR%\DIA SDK\include;%INCLUDE%
+        set LIB=%VSINSTALLDIR%\DIA SDK\lib\amd64;%LIB%
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Release^
           -DQt6_DIR="${{github.workspace}}\out\qt\lib\cmake\Qt6"^
           -DQt6BundledPcre2_DIR="${{github.workspace}}\out\qt\lib\cmake\Qt6BundledPcre2"^
